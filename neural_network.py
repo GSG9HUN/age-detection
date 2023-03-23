@@ -103,3 +103,5 @@ model.summary()
 save_weights = tf.keras.callbacks.ModelCheckpoint(filepath=".\weights\\", save_weights_only=True, verbose=1)
 
 history = model.fit(x=X, y=y_age, batch_size=32, epochs=120, validation_split=0.2, callbacks=[save_weights])
+
+model.save("model\\my_model")
