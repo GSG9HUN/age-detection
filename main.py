@@ -1,33 +1,38 @@
-import cv2
-import sys
+import os,random
+import shutil
 
-imagePath = sys.argv[1]
-cascPath = sys.argv[2]
-# Create the haar cascade
-faceCascade = cv2.CascadeClassifier(cascPath)
-# Read the image
-image = cv2.imread(imagePath)
-gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-faces = faceCascade.detectMultiScale(
-    gray,
-    scaleFactor=1.1,
-    minNeighbors=5,
-    minSize=(30, 30),
-    flags=cv2.CASCADE_SCALE_IMAGE
-)
+for i in range(0,100):
+    if len(str(i)) == 1:
+        directory = "0"+str(i)
+        fileName = random.choice(os.listdir(".\\DataSet\\training\\"+directory))
+        shutil.move(".\\DataSet\\training\\"+directory+"\\"+fileName,".\\DataSet\\validate\\"+directory+"\\"+fileName)
+        continue
+    fileName = random.choice(os.listdir(".\\DataSet\\training\\"+str(i)))
+    shutil.move(".\\DataSet\\training\\"+str(i)+"\\"+fileName,".\\DataSet\\validate\\"+str(i)+"\\"+fileName)
 
-if len(faces) == 0:
-    print("There is no faces")
-    exit(0);
 
-print("Found {0} faces!".format(len(faces)))
+"""
+import tensorflow as tf
+from tensorflow.keras.preprocessing import image
+import numpy as np
 
-# Draw a rectangle around the faces
-rectangles = [];
-for (x, y, w, h) in faces:
-    rectangles.append(cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2))
+# Load the trained model
+model = tf.keras.models.load_model('path/to/trained/model')
 
-print(len(rectangles))
-cv2.imshow("Faces found", image)
-cv2.waitKey(0)
+# Load and preprocess the new image
+img = image.load_img('path/to/new/image', target_size=(224, 224))
+img_array = image.img_to_array(img)
+img_array = np.expand_dims(img_array, axis=0)
+img_array = img_array / 255.0
+
+# Perform age classification
+age_classes = ['0-2', '4-6', '8-12', '15-20', '25-32'] # the age classes used during training
+predictions = model.predict(img_array)
+
+# Get the predicted age class
+predicted_age_class = age_classes[np.argmax(predictions)]
+
+# Print the predicted age class
+print('The predicted age class is:', predicted_age_class)
+"""
