@@ -1,38 +1,63 @@
-import os,random
-import shutil
+import cv2
+import dlib
 
+img = cv2.imread('face.jpg')
+img = cv2.resize(img, (720, 640))
+# kép másolat.
+imgCopy = img.copy()
+# Már betanított NN model értékeinek beolvasása.
+ageWeights = "pretrained_stuffs/age_deploy.prototxt"
+ageConfig = "pretrained_stuffs/age_net.caffemodel"
+ageNet = cv2.dnn.readNet(ageConfig, ageWeights)
 
-for i in range(0,100):
-    if len(str(i)) == 1:
-        directory = "0"+str(i)
-        fileName = random.choice(os.listdir(".\\DataSet\\training\\"+directory))
-        shutil.move(".\\DataSet\\training\\"+directory+"\\"+fileName,".\\DataSet\\validate\\"+directory+"\\"+fileName)
-        continue
-    fileName = random.choice(os.listdir(".\\DataSet\\training\\"+str(i)))
-    shutil.move(".\\DataSet\\training\\"+str(i)+"\\"+fileName,".\\DataSet\\validate\\"+str(i)+"\\"+fileName)
+# Életkor lista.
+ageList = ['(0-2)', '(4-6)', '(8-12)', '(15-20)',
+           '(25-32)', '(38-43)', '(48-53)', '(60-100)']
+# ezek igazából fogalmam sincs hogy micsodák.
+modelMean = (78.4263377603, 87.7689143744, 114.895847746)
 
+Boxes = []  # Az arcok keretezésére.
+message = 'Eletkor'  # A szöveg ami megjelenik majd.
 
-"""
-import tensorflow as tf
-from tensorflow.keras.preprocessing import image
-import numpy as np
+# Arc detektáló
+face_detector = dlib.get_frontal_face_detector()
+# szürtkítés
+img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-# Load the trained model
-model = tf.keras.models.load_model('path/to/trained/model')
+# arcok keresése
+faces = face_detector(img)
 
-# Load and preprocess the new image
-img = image.load_img('path/to/new/image', target_size=(224, 224))
-img_array = image.img_to_array(img)
-img_array = np.expand_dims(img_array, axis=0)
-img_array = img_array / 255.0
+# Ha nem talál arcot rajta
+if not faces:
+    message = 'Nincsenek arcok a képen.'
+    cv2.putText(img, f'{message}', (40, 40),
+                cv2.FONT_HERSHEY_SIMPLEX, 2, 200, 2)
 
-# Perform age classification
-age_classes = ['0-2', '4-6', '8-12', '15-20', '25-32'] # the age classes used during training
-predictions = model.predict(img_array)
+else:
+    # Az arcok bekeretezésére
+    for face in faces:
+        box = [face.left(), face.top(), face.right(), face.bottom()]
+        Boxes.append(box)
+        cv2.rectangle(img, (face.left(), face.top()), (face.right(), face.bottom()),
+                      (00, 200, 200), 2)
 
-# Get the predicted age class
-predicted_age_class = age_classes[np.argmax(predictions)]
+    for box in Boxes:
+        #ide kell a képmásolatt mert a modell RGB-s képpel tud dolgozni, ezért nem jó neki a grayscale img.
+        #kivágjuk csak az arcot.
+        face = imgCopy[box[1]:box[3], box[0]:box[2]]
+        # kép előkészítése.
+        blob = cv2.dnn.blobFromImage(
+            face, 1.0, (227, 227), modelMean, swapRB=False)
 
-# Print the predicted age class
-print('The predicted age class is:', predicted_age_class)
-"""
+        # Életkor meghatározás.
+        ageNet.setInput(blob)
+        agePreds = ageNet.forward()
+        age = ageList[agePreds[0].argmax()]
+
+        cv2.putText(img, f'{message}: {age}', (box[0],
+                                             box[1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                    (255, 255, 255), 2, cv2.LINE_AA)
+
+cv2.imshow("Eletkor meghatarozas", img)
+cv2.waitKey(0)
